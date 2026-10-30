@@ -1,6 +1,8 @@
 package s2s
 
-import "reflect"
+import (
+	"reflect"
+)
 
 func Copy(dst, src any) {
 	dstEl := reflect.ValueOf(dst).Elem()
@@ -14,11 +16,30 @@ func Copy(dst, src any) {
 
 		switch df.Kind() {
 		case reflect.Pointer:
-			df.Set(ptrOrNew(sv))
+			sv = ptrOrNew(sv)
 		default:
-			df.Set(reflect.Indirect(sv))
+			sv = reflect.Indirect(sv)
+		}
+
+		setField(df, sv)
+	}
+}
+
+func setField(f reflect.Value, v reflect.Value) bool {
+	ft, vt := f.Type(), v.Type()
+
+	if ft == vt {
+		f.Set(v)
+		return true
+	}
+
+	for ef, ev := range v.Fields() {
+		if ef.Anonymous && setField(f, ev) {
+			return true
 		}
 	}
+
+	return false
 }
 
 func ptrOrNew(v reflect.Value) reflect.Value {
