@@ -7,10 +7,30 @@ import (
 func Copy(dst, src any) {
 	dstEl := reflect.ValueOf(dst).Elem()
 	srcEl := reflect.ValueOf(src).Elem()
+	dk, sk := dstEl.Kind(), srcEl.Kind()
 
+	if dk == reflect.Struct && sk == reflect.Struct {
+		copyStruct(dstEl, srcEl)
+	} else if dk == reflect.Slice && sk == reflect.Struct {
+		copyStructToSlice(dstEl, srcEl)
+	} else if dk == reflect.Slice && sk == reflect.Slice {
+		for i := range srcEl.Len() {
+			copyStructToSlice(dstEl, srcEl.Index(i))
+		}
+	}
+}
+
+func copyStructToSlice(dstEl, srcEl reflect.Value) {
+	iv := reflect.New(dstEl.Type().Elem())
+	ie := iv.Elem()
+	copyStruct(ie, srcEl)
+	dstEl.Set(reflect.Append(dstEl, ie))
+}
+
+func copyStruct(dstEl, srcEl reflect.Value) {
 	for sf, sv := range srcEl.Fields() {
 		df := dstEl.FieldByName(sf.Name)
-		if !df.CanSet() {
+		if !df.CanSet() || !sv.IsValid() || sv.IsZero() {
 			continue
 		}
 
